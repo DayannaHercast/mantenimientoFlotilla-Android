@@ -11,6 +11,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import android.widget.Toast
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.transandina_app.screens.auth.LoginScreen
+import com.example.transandina_app.screens.auth.RegisterScreen
 import com.example.transandina_app.ui.theme.TransAndinaAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,29 +27,48 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TransAndinaAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                val context = LocalContext.current
+                var currentScreen by remember { mutableStateOf("login") }
+
+                when (currentScreen) {
+                    "login" -> {
+                        LoginScreen(
+                            onLoginClick = { email, password ->
+                                Toast.makeText(
+                                    context,
+                                    "Iniciando sesión con: $email",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onNavigateToRegister = {
+                                currentScreen = "register"
+                            },
+                            onForgotPasswordClick = {
+                                Toast.makeText(
+                                    context,
+                                    "Recuperación de contraseña por correo",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    }
+                    "register" -> {
+                        RegisterScreen(
+                            onRegisterSuccess = {
+                                Toast.makeText(
+                                    context,
+                                    "¡Cuenta registrada con éxito! Volviendo a inicio...",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                currentScreen = "login"
+                            },
+                            onNavigateBack = {
+                                currentScreen = "login"
+                            }
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TransAndinaAppTheme {
-        Greeting("Android")
     }
 }
