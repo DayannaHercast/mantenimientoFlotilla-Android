@@ -1,9 +1,5 @@
 -- ============================================================================
--- SCRIPT DE CREACION DE TABLAS: TransAndina (Azure SQL Database)
--- Convenciones: Nombres en singular, tablas intermedias con 'x' (ej: mantenimientoxcategoria),
--- columnas en camelCase, 3NF normalizado.
--- Servidor: tec-apdatabases.database.windows.net
--- Base de datos: transandina
+-- SCRIPT DE CREACION DE TABLAS: TransAndina
 -- ============================================================================
 
 -- Limpieza previa en orden inverso de dependencias

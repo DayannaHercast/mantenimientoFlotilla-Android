@@ -20,12 +20,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.transandina_app.data.model.VehiculoFlotilla
+import com.example.transandina_app.data.repository.VehiculoRepository
+import kotlinx.coroutines.launch
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -72,25 +81,51 @@ data class VehiculoItem(
     val id: String,
     val nombre: String, // Marca y Modelo
     val placa: String,
-    val estado: EstadoSemaforo
+    val estado: EstadoSemaforo,
+    val vehiculoOriginal: VehiculoFlotilla? = null
 )
 
 @Composable
 fun FleetManagementScreen(
     modifier: Modifier = Modifier,
+    vehiculoRepository: VehiculoRepository = remember { VehiculoRepository() },
     onNavigateBack: () -> Unit = {},
     onVehicleDetailClick: (VehiculoItem) -> Unit = {}
 ) {
-    // Lista de vehículos de prueba (Mock Data) basada en el prototipo
-    val vehiculosIniciales = remember {
-        listOf(
-            VehiculoItem("1", "Toyota Hilux 2022", "DDD-123", EstadoSemaforo.AL_DIA),
-            VehiculoItem("2", "Hyundai Tucson 2023", "DDD-124", EstadoSemaforo.AL_DIA),
-            VehiculoItem("3", "Hyundai Tucson 2022", "DDD-125", EstadoSemaforo.PROXIMO),
-            VehiculoItem("4", "Toyota Hilux 2021", "DDD-126", EstadoSemaforo.ATRASADO),
-            VehiculoItem("5", "Nissan Frontier 2023", "DDD-127", EstadoSemaforo.AL_DIA),
-            VehiculoItem("6", "Mitsubishi L200 2020", "DDD-128", EstadoSemaforo.ATRASADO)
-        )
+    var vehiculosList by remember { mutableStateOf<List<VehiculoFlotilla>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun cargarVehiculos() {
+        isLoading = true
+        errorMessage = null
+        coroutineScope.launch {
+            val result = vehiculoRepository.obtenerFlotilla()
+            result.onSuccess { lista ->
+                vehiculosList = lista
+                isLoading = false
+            }.onFailure { error ->
+                errorMessage = error.localizedMessage ?: "Error al conectar con la base de datos."
+                isLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        cargarVehiculos()
+    }
+
+    val vehiculosItems = remember(vehiculosList) {
+        vehiculosList.map { v ->
+            VehiculoItem(
+                id = v.placa,
+                nombre = v.nombreCompleto,
+                placa = v.placa,
+                estado = v.estadoSemaforo,
+                vehiculoOriginal = v
+            )
+        }
     }
 
     // Estados de búsqueda y filtro
@@ -101,8 +136,8 @@ fun FleetManagementScreen(
     val filterOptions = listOf("Todos", "Al día", "Próximo", "Atrasado")
 
     // Filtrado dinámico en tiempo real por búsqueda de texto y estado
-    val vehiculosFiltrados = remember(searchQuery, selectedFilter, vehiculosIniciales) {
-        vehiculosIniciales.filter { vehiculo ->
+    val vehiculosFiltrados = remember(searchQuery, selectedFilter, vehiculosItems) {
+        vehiculosItems.filter { vehiculo ->
             val coincideTexto = vehiculo.nombre.contains(searchQuery, ignoreCase = true) ||
                     vehiculo.placa.contains(searchQuery, ignoreCase = true)
 
@@ -261,27 +296,99 @@ fun FleetManagementScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                if (vehiculosFiltrados.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 40.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No se encontraron vehículos con los filtros aplicados",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
-                                textAlign = TextAlign.Center
-                            )
+                when {
+                    isLoading -> {
+                        item {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 60.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = NavyBluePrimary,
+                                    strokeWidth = 3.dp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Consultando flotilla en Azure SQL...",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = NavyBluePrimary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
                         }
                     }
-                } else {
-                    items(vehiculosFiltrados, key = { it.id }) { vehiculo ->
-                        VehicleCardItem(
-                            vehiculo = vehiculo,
-                            onVerMasClick = { onVehicleDetailClick(vehiculo) }
-                        )
+                    errorMessage != null -> {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = Color(0xFFDC2626),
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = errorMessage ?: "",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = Color(0xFF991B1B),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = { cargarVehiculos() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = NavyBluePrimary),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(text = "Reintentar conexión", color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    vehiculosFiltrados.isEmpty() -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (vehiculosItems.isEmpty()) "No hay vehículos registrados en la base de datos." else "No se encontraron vehículos con los filtros aplicados",
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        items(vehiculosFiltrados, key = { it.id }) { vehiculo ->
+                            VehicleCardItem(
+                                vehiculo = vehiculo,
+                                onVerMasClick = { onVehicleDetailClick(vehiculo) }
+                            )
+                        }
                     }
                 }
 

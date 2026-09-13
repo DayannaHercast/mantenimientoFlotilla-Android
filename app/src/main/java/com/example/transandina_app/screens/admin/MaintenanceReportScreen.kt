@@ -414,11 +414,11 @@ fun MaintenanceReportScreen(
                             isOpen = isRangoMenuOpen,
                             onOpenChange = { isRangoMenuOpen = it },
                             onSelect = { opcion ->
-                                when (opcion) {
-                                    "Elegir en calendario" -> {
+                                when {
+                                    opcion.contains("calendario", ignoreCase = true) || opcion.contains("personalizado", ignoreCase = true) -> {
                                         showDateRangePicker = true
                                     }
-                                    "Seleccionar año" -> {
+                                    opcion.contains("año", ignoreCase = true) -> {
                                         showYearPickerDialog = true
                                     }
                                     else -> {

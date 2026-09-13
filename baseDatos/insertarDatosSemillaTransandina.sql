@@ -1,8 +1,5 @@
 -- ============================================================================
--- SCRIPT DE DATOS SEMILLA: TransAndina (Azure SQL Database)
--- Convenciones: Nombres en singular, tablas intermedias con 'x'
--- Servidor: tec-apdatabases.database.windows.net
--- Base de datos: transandina
+-- SCRIPT DE DATOS SEMILLA: TransAndina
 -- ============================================================================
 
 -- 1. Limpieza de datos existentes en orden inverso de dependencias

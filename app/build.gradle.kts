@@ -1,6 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -17,9 +26,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "DB_SERVER", "\"${localProperties.getProperty("DB_SERVER", "")}\"")
+        buildConfigField("String", "DB_NAME", "\"${localProperties.getProperty("DB_NAME", "")}\"")
+        buildConfigField("String", "DB_USER", "\"${localProperties.getProperty("DB_USER", "")}\"")
+        buildConfigField("String", "DB_PASSWORD", "\"${localProperties.getProperty("DB_PASSWORD", "")}\"")
     }
 
     buildTypes {
+        debug {
+            isDebuggable = false
+        }
         release {
             optimization {
                 enable = false
@@ -32,6 +49,14 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/DEPENDENCIES"
+        }
     }
 }
 
@@ -45,6 +70,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bctls-jdk18on:1.78.1")
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
