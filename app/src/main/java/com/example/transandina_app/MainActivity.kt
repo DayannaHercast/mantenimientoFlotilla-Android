@@ -31,6 +31,19 @@ import com.example.transandina_app.screens.admin.VehicleDetailScreen
 import com.example.transandina_app.screens.auth.LoginScreen
 import com.example.transandina_app.screens.auth.RegisterScreen
 import com.example.transandina_app.ui.theme.TransAndinaAppTheme
+import com.example.transandina_app.screens.admin.AdminGestionUsuarios
+import com.example.transandina_app.screens.admin.GestionConductores
+import com.example.transandina_app.screens.admin.GestionMecanicos
+import com.example.transandina_app.screens.admin.AdminGestionAsignarVehiculo
+import com.example.transandina_app.screens.admin.AdminFichaTecnicaVehiculo
+import com.example.transandina_app.screens.admin.AdminReasignarConductor
+import com.example.transandina_app.screens.admin.AdminConfirmarReasignacion
+import com.example.transandina_app.screens.admin.AdminEditarVehiculoInfo
+import com.example.transandina_app.screens.admin.AdminEditarVehiculoEstado
+import com.example.transandina_app.screens.admin.VehiculoInfoGeneral
+import com.example.transandina_app.screens.admin.AdminConfirmarEdicionVehicular
+import com.example.transandina_app.screens.admin.AdminFichaTecnicaVehiculo
+import com.example.transandina_app.screens.admin.FichaTecnicaVehiculo
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +64,8 @@ class MainActivity : ComponentActivity() {
                 var loginErrorMessage by remember { mutableStateOf<String?>(null) }
                 var isRegistering by remember { mutableStateOf(false) }
                 var registerErrorMessage by remember { mutableStateOf<String?>(null) }
+                var fichaTecnicaSeleccionada by remember { mutableStateOf(FichaTecnicaVehiculo()) }
+                var infoGeneralTemporal by remember { mutableStateOf<VehiculoInfoGeneral?>(null) }
 
                 when (currentScreen) {
                     "login" -> {
@@ -133,11 +148,12 @@ class MainActivity : ComponentActivity() {
                     "admin_home" -> {
                         AdminHomeScreen(
                             onNavigateToUsers = {
-                                Toast.makeText(context, "Módulo de Usuarios", Toast.LENGTH_SHORT).show()
+                                currentScreen = "admin_gestion_usuarios"
                             },
                             onNavigateToVehicles = {
-                                Toast.makeText(context, "Módulo de Vehículos", Toast.LENGTH_SHORT).show()
+                                currentScreen = "gestion_flotilla"
                             },
+
                             onNavigateToRecords = {
                                 Toast.makeText(context, "Módulo de Registros", Toast.LENGTH_SHORT).show()
                             },
@@ -154,6 +170,140 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+
+                    "admin_gestion_usuarios" -> {
+                        AdminGestionUsuarios(
+                            onNavigateToConductores = {
+                                currentScreen = "gestion_conductores"
+                            },
+                            onNavigateToMecanicos = {
+                                currentScreen = "gestion_mecanicos"
+                            },
+                            onVolver = {
+                                currentScreen = "admin_home"
+                            }
+                        )
+                    }
+
+                    "gestion_conductores" -> {
+                        GestionConductores(
+                            onEstadoChange = { conductorId, nuevoEstado ->
+                                //TODO: acá va el UPDATE a la base de datos cuando esté conectada
+                                Toast.makeText(context, "Conductor $conductorId → ${nuevoEstado.etiqueta}", Toast.LENGTH_SHORT).show()
+                            },
+                            onVolver = {
+                                currentScreen = "admin_gestion_usuarios"
+                            }
+                        )
+                    }
+
+                    "gestion_mecanicos" -> {
+                        GestionMecanicos(
+                            onEstadoChange = { mecanicoId, nuevoEstado ->
+                                // TODO: acá va el UPDATE a la base de datos cuando esté conectada
+                                Toast.makeText(context, "Mecánico $mecanicoId → ${nuevoEstado.etiqueta}", Toast.LENGTH_SHORT).show()
+                            },
+                            onVolver = {
+                                currentScreen = "admin_gestion_usuarios"
+                            }
+                        )
+                    }
+
+                    "gestion_flotilla" -> {
+                        AdminGestionAsignarVehiculo(
+                            onVerFichaVehicular = { vehiculo ->
+                                fichaTecnicaSeleccionada = FichaTecnicaVehiculo(
+                                    placa = vehiculo.placa,
+                                    marca = vehiculo.marca,
+                                    modelo = vehiculo.modelo,
+                                    estado = vehiculo.estado.etiqueta,
+                                    conductorActual = vehiculo.conductorActual
+                                    // año, capacidad, vencimiento y kilometraje quedan con los
+                                    // valores por defecto hasta que la base de datos los traiga
+                                )
+                                currentScreen = "admin_ficha_tecnica_vehiculo"
+                            },
+                            onVolver = {
+                                currentScreen = "admin_home"
+                            }
+                        )
+                    }
+
+                    "admin_ficha_tecnica_vehiculo" -> {
+                        AdminFichaTecnicaVehiculo(
+                            ficha = fichaTecnicaSeleccionada,
+                            onReasignarConductor = {
+                                currentScreen = "admin_reasignar_conductor"
+                            },
+                            onEditarInformacionVehicular = {
+                                currentScreen = "admin_editar_vehiculo_info"
+                            },
+                            onVolver = {
+                                currentScreen = "gestion_flotilla"
+                            }
+                        )
+                    }
+
+                    "admin_reasignar_conductor" -> {
+                        AdminReasignarConductor(
+                            conductorActual = fichaTecnicaSeleccionada.conductorActual,
+                            onConfirmarReasignacion = { nuevoConductorId ->
+                                // TODO: acá va el UPDATE a la base de datos cuando esté conectada
+                                currentScreen = "admin_confirmar_reasignacion"
+                            },
+                            onCancelar = {
+                                currentScreen = "admin_ficha_tecnica_vehiculo"
+                            }
+                        )
+                    }
+
+
+                    "admin_confirmar_reasignacion" -> {
+                        AdminConfirmarReasignacion(
+                            onFinalizarYVolver = {
+                                currentScreen = "admin_ficha_tecnica_vehiculo"
+                            }
+                        )
+                    }
+
+                    "admin_editar_vehiculo_info" -> {
+                        AdminEditarVehiculoInfo(
+                            placaInicial = fichaTecnicaSeleccionada.placa,
+                            marcaInicial = fichaTecnicaSeleccionada.marca,
+                            modeloInicial = fichaTecnicaSeleccionada.modelo,
+                            onVolver = {
+                                currentScreen = "admin_ficha_tecnica_vehiculo"
+                            },
+                            onContinuar = { datos ->
+                                infoGeneralTemporal = datos
+                                currentScreen = "admin_editar_vehiculo_estado"
+                            }
+                        )
+                    }
+                    "admin_editar_vehiculo_estado" -> {
+                        AdminEditarVehiculoEstado(
+                            onVolver = {
+                                currentScreen = "admin_editar_vehiculo_info"
+                            },
+                            onGuardar = { estadoDatos ->
+                                // TODO: acá van los dos objetos juntos (infoGeneralTemporal + estadoDatos)
+                                // para armar el UPDATE completo a la base de datos
+                                currentScreen = "admin_confirmar_edicion_vehicular"
+                            },
+                        )
+                    }
+
+                    "admin_confirmar_edicion_vehicular" -> {
+                        AdminConfirmarEdicionVehicular(
+                            onFinalizarYVolver = {
+                                currentScreen = "admin_ficha_tecnica_vehiculo"
+                            }
+                        )
+                    }
+
+
+
+
                     "fleet_management" -> {
                         FleetManagementScreen(
                             onNavigateBack = {
