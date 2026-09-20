@@ -1,7 +1,5 @@
 package com.example.transandina_app.screens.admin
 
-package com.example.transandina_app.screens.admin
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
