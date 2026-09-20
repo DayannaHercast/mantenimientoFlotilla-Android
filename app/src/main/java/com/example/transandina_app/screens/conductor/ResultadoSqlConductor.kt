@@ -21,6 +21,9 @@ internal suspend fun <T> resultadoSqlConductor(accion: suspend () -> T): Result<
         51108, 51109, 51110, 51114 -> "Revisa el tipo, categoría, taller, descripción y costo del mantenimiento."
         51115 -> "La notificación no está asignada a tu usuario."
         51300, 51301, 51302, 51303 -> "Los comprobantes no son válidos o superan el límite permitido."
+        52000, 52001 -> "Tu usuario está inactivo o no tiene el rol de mecánico."
+        52003, 52004 -> "Revisa el rango de fechas de la consulta."
+        52107 -> "El vehículo no existe o está inactivo. Vuelve a seleccionar uno."
         2812 -> "Falta instalar un procedimiento almacenado del módulo de conductor."
         else -> "No se pudo completar la operación con la base de datos. Si estabas guardando, verifica el historial antes de repetir el envío."
     }

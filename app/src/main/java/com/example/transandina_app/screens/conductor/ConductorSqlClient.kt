@@ -90,7 +90,9 @@ internal class ConsultaSqlConductor(private val conexion: Connection, plantilla:
             "sp_ObtenerVehiculoPorPlaca", "sp_ObtenerHistorialServicios",
             "sp_RegistrarKilometraje", "sp_ObtenerHistorialKilometraje",
             "sp_RegistrarMantenimientoConArchivos", "sp_ObtenerNotificacionesVehiculo",
-            "sp_ObtenerResumenInicioConductor", "sp_MarcarNotificacionLeida"
+            "sp_ObtenerResumenInicioConductor", "sp_MarcarNotificacionLeida",
+            "sp_ObtenerVehiculosActivosMecanico", "sp_RegistrarMantenimientoMecanico",
+            "sp_ObtenerResumenMecanico", "sp_ObtenerHistorialMecanico"
         )) { "Procedimiento no permitido." }
         val argumentos = coincidencia.groupValues[2]
         nombres = if (argumentos.isBlank()) emptyList() else argumentos.split(",").map {
@@ -121,7 +123,7 @@ internal class ConsultaSqlConductor(private val conexion: Connection, plantilla:
         asignar(indice, "'" + fecha + "'")
     }
     fun setNull(indice: Int, tipo: Int) {
-        require(tipo == Types.NVARCHAR)
+        require(tipo == Types.NVARCHAR || tipo == Types.DATE)
         asignar(indice, "NULL")
     }
 

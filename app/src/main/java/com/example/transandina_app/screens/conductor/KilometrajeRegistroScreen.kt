@@ -131,7 +131,9 @@ fun KilometrajeRegistroScreen(
         (kilometrajeActualTexto.toIntOrNull()?.let { it >= 0 } == true) &&
         ConductorFormato.fechaValida(fechaMillis)
 
-    Surface(modifier = modifier.fillMaxSize(), color = BackgroundCanvas) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = BackgroundCanvas) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             // --- 1. ENCABEZADO CORPORATIVO TRANSANDINA ---

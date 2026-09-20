@@ -48,7 +48,9 @@ class MantenimientoRegistroRepository {
             }
         }
     }
-    private fun prepararArchivos(context: Context, referencias: List<String>): String {
+    /** Compartido con mecanico para conservar formato y limites de evidencias. */
+    internal fun prepararArchivos(context: Context, referencias: List<String>): String {
+        require(referencias.size <= 5) { "Selecciona un máximo de 5 comprobantes." }
         val archivos = JSONArray()
         var total = 0
         referencias.forEachIndexed { indice, referencia ->
