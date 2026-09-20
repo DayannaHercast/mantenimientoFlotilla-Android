@@ -1,15 +1,4 @@
--- Seleccionar la base transandina en SSMS antes de ejecutar.
-/*
- TransAndina - consultas para las 8 pantallas entregadas.
- SQL Server 2016 SP1+; ejecutar en la BD que contiene las tablas, esquema dbo.
- No ejecutar de nuevo crearTablasTransandina.sql: contiene DROP TABLE.
- CREATE OR ALTER reemplaza procedimientos homonimos: revisar antes de instalar.
- @IdConductor / @IdUsuario deben proceder de la identidad autenticada del backend.
- Consultas de vehiculos: solamente asignaciones actuales de usuarios activos.
- Notificaciones: solamente destinatarios en usuarioxnotificacion.
- Los SELECT de los procedimientos tienen alias camelCase para los DTO Kotlin.
- Ver ANALISIS_Y_CONTRATO.md para nulos, decimales, fechas y reglas de negocio.
-*/
+
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
