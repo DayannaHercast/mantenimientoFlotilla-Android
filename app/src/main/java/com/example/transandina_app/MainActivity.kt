@@ -67,6 +67,10 @@ import com.example.transandina_app.screens.admin.AdminEditarVehiculoEstado
 import com.example.transandina_app.screens.admin.VehiculoInfoGeneral
 import com.example.transandina_app.screens.admin.AdminConfirmarEdicionVehicular
 import com.example.transandina_app.screens.admin.FichaTecnicaVehiculo
+import com.example.transandina_app.data.repository.VehiculoRepository
+import com.example.transandina_app.screens.admin.Conductor
+import com.example.transandina_app.screens.admin.EstadoConductor
+import com.example.transandina_app.screens.admin.EstadoVehiculo
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,6 +85,7 @@ class MainActivity : ComponentActivity() {
                 var selectedFicha by remember { mutableStateOf(FichaVehicular()) }
 
                 val authRepository = remember { AuthRepository() }
+                val vehiculoRepository = remember { VehiculoRepository() }
                 val coroutineScope = rememberCoroutineScope()
                 var usuarioLogueado by remember { mutableStateOf<Usuario?>(null) }
                 var isLoggingIn by remember { mutableStateOf(false) }
@@ -429,11 +434,14 @@ class MainActivity : ComponentActivity() {
 
                     "admin_ficha_tecnica_vehiculo" -> {
                         AdminFichaTecnicaVehiculo(
+                            placa = fichaTecnicaSeleccionada.placa,
                             ficha = fichaTecnicaSeleccionada,
-                            onReasignarConductor = {
+                            onReasignarConductor = { f ->
+                                fichaTecnicaSeleccionada = f
                                 currentScreen = "admin_reasignar_conductor"
                             },
-                            onEditarInformacionVehicular = {
+                            onEditarInformacionVehicular = { f ->
+                                fichaTecnicaSeleccionada = f
                                 currentScreen = "admin_editar_vehiculo_info"
                             },
                             onVolver = {
@@ -444,17 +452,28 @@ class MainActivity : ComponentActivity() {
 
                     "admin_reasignar_conductor" -> {
                         AdminReasignarConductor(
+                            placa = fichaTecnicaSeleccionada.placa,
                             conductorActual = fichaTecnicaSeleccionada.conductorActual,
                             onConfirmarReasignacion = { nuevoConductorId ->
-                                // TODO: acá va el UPDATE a la base de datos cuando esté conectada
-                                currentScreen = "admin_confirmar_reasignacion"
+                                coroutineScope.launch {
+                                    val res = vehiculoRepository.reasignarConductor(
+                                        placa = fichaTecnicaSeleccionada.placa,
+                                        idNuevoConductor = nuevoConductorId,
+                                        idAsignador = usuarioLogueado?.idUsuario ?: 1
+                                    )
+                                    res.onSuccess {
+                                        Toast.makeText(context, "Conductor reasignado exitosamente", Toast.LENGTH_SHORT).show()
+                                        currentScreen = "admin_confirmar_reasignacion"
+                                    }.onFailure { err ->
+                                        Toast.makeText(context, "Error: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
                             },
                             onCancelar = {
                                 currentScreen = "admin_ficha_tecnica_vehiculo"
                             }
                         )
                     }
-
 
                     "admin_confirmar_reasignacion" -> {
                         AdminConfirmarReasignacion(
@@ -469,6 +488,12 @@ class MainActivity : ComponentActivity() {
                             placaInicial = fichaTecnicaSeleccionada.placa,
                             marcaInicial = fichaTecnicaSeleccionada.marca,
                             modeloInicial = fichaTecnicaSeleccionada.modelo,
+                            anioInicial = fichaTecnicaSeleccionada.anio,
+                            tipoVehiculoInicial = fichaTecnicaSeleccionada.tipoVehiculo,
+                            capacidadInicial = fichaTecnicaSeleccionada.capacidad,
+                            conductorAsignadoInicial = if (fichaTecnicaSeleccionada.conductorActual.isNotBlank() && !fichaTecnicaSeleccionada.conductorActual.equals("Sin asignar", ignoreCase = true)) {
+                                Conductor(0, fichaTecnicaSeleccionada.conductorActual, EstadoConductor.ACTIVO)
+                            } else null,
                             onVolver = {
                                 currentScreen = "admin_ficha_tecnica_vehiculo"
                             },
@@ -480,13 +505,34 @@ class MainActivity : ComponentActivity() {
                     }
                     "admin_editar_vehiculo_estado" -> {
                         AdminEditarVehiculoEstado(
+                            kilometrajeInicial = fichaTecnicaSeleccionada.kilometrajeActual,
+                            revisionTecnicaInicial = fichaTecnicaSeleccionada.vencimientoRtv,
+                            marchamoInicial = fichaTecnicaSeleccionada.vencimientoMarchamo,
+                            seguroInicial = fichaTecnicaSeleccionada.vencimientoSeguro,
+                            estadoInicial = if (fichaTecnicaSeleccionada.estado.equals("Inactivo", ignoreCase = true)) EstadoVehiculo.INACTIVO else EstadoVehiculo.ACTIVO,
                             onVolver = {
                                 currentScreen = "admin_editar_vehiculo_info"
                             },
                             onGuardar = { estadoDatos ->
-                                // TODO: acá van los dos objetos juntos (infoGeneralTemporal + estadoDatos)
-                                // para armar el UPDATE completo a la base de datos
-                                currentScreen = "admin_confirmar_edicion_vehicular"
+                                val info = infoGeneralTemporal
+                                if (info != null) {
+                                    coroutineScope.launch {
+                                        val res = vehiculoRepository.actualizarVehiculo(
+                                            placa = fichaTecnicaSeleccionada.placa,
+                                            infoGeneral = info,
+                                            estadoInicial = estadoDatos,
+                                            idAsignador = usuarioLogueado?.idUsuario ?: 1
+                                        )
+                                        res.onSuccess {
+                                            Toast.makeText(context, "Vehículo actualizado exitosamente", Toast.LENGTH_SHORT).show()
+                                            currentScreen = "admin_confirmar_edicion_vehicular"
+                                        }.onFailure { err ->
+                                            Toast.makeText(context, "Error: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                } else {
+                                    currentScreen = "admin_confirmar_edicion_vehicular"
+                                }
                             },
                         )
                     }
