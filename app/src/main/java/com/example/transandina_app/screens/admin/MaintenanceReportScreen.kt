@@ -1,6 +1,13 @@
 package com.example.transandina_app.screens.admin
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
+import java.io.File
+import java.io.FileOutputStream
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -270,6 +277,10 @@ fun MaintenanceReportScreen(
     // Estado del diálogo de evidencias fotográficas
     var selectedItemParaEvidencia by remember { mutableStateOf<MantenimientoItem?>(null) }
 
+    // Estado para la pantalla de éxito de exportación a Excel
+    var showSuccessExportScreen by remember { mutableStateOf(false) }
+    var exportedFileName by remember { mutableStateOf("") }
+
     // Filtrado interactivo en tiempo real por vehículo, tipo y rango de fechas
     val mantenimientosFiltrados = remember(
         selectedVehiculo,
@@ -320,10 +331,18 @@ fun MaintenanceReportScreen(
     }
 
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = BackgroundCanvas
-    ) {
+    if (showSuccessExportScreen) {
+        ExportSuccessView(
+            fileName = exportedFileName,
+            onFinalizarYVolver = {
+                showSuccessExportScreen = false
+            }
+        )
+    } else {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = BackgroundCanvas
+        ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             // --- 1. ENCABEZADO CORPORATIVO TRANSANDINA (SIN FLECHA SUPERIOR) ---
@@ -550,11 +569,24 @@ fun MaintenanceReportScreen(
                     // Botón Exportar Reporte Excel
                     Button(
                         onClick = {
-                            Toast.makeText(
-                                context,
-                                "Exportando reporte de flotilla a Excel (.xlsx)...",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            val (exito, nombreOError) = exportarReporteExcel(
+                                context = context,
+                                mantenimientos = mantenimientosFiltrados,
+                                vehiculoSeleccionado = selectedVehiculo,
+                                tipoSeleccionado = selectedTipo,
+                                rangoFechas = selectedRango,
+                                totalInversion = costoTotal
+                            )
+                            if (exito) {
+                                exportedFileName = nombreOError
+                                showSuccessExportScreen = true
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error al exportar reporte: $nombreOError",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                         },
                         modifier = Modifier
                             .weight(2.2f)
@@ -831,6 +863,7 @@ fun MaintenanceReportScreen(
         }
     }
 }
+}
 
 // Selector desplegable reutilizable para filtros
 @Composable
@@ -1036,6 +1069,198 @@ private fun MaintenanceCardItem(
                 )
             }
         }
+    }
+}
+
+// --- PANTALLA DE CONFIRMACIÓN DE EXPORTACIÓN (PROTOTIPO FIGMA) ---
+@Composable
+private fun ExportSuccessView(
+    fileName: String,
+    onFinalizarYVolver: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = BackgroundCanvas
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Encabezado corporativo TransAndina
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(NavyBlueDark, NavyBluePrimary)
+                        )
+                    )
+                    .padding(top = 46.dp, bottom = 26.dp, start = 20.dp, end = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Gestión de Mantenimiento de Flotillas",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.5.sp
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "TransAndina",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            color = LightBlueHeader,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            // Contenido central (Prototipo Figma: ¡Guardado Exitoso!)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "¡Guardado Exitoso!",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        color = NavyBluePrimary,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "La información del vehículo ha sido exportada con éxito",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = NavyBluePrimary,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 24.sp
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                        if (fileName.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = "Descargado en Descargas:\n$fileName",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color.Gray
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(36.dp))
+
+                OutlinedButton(
+                    onClick = onFinalizarYVolver,
+                    modifier = Modifier.height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, NavyBluePrimary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyBluePrimary)
+                ) {
+                    Text(
+                        text = "Finalizar y volver",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = NavyBluePrimary
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --- FUNCIÓN UTILITARIA PARA EXPORTAR REPORTE A EXCEL (.CSV) ---
+fun exportarReporteExcel(
+    context: Context,
+    mantenimientos: List<MantenimientoItem>,
+    vehiculoSeleccionado: String,
+    tipoSeleccionado: String,
+    rangoFechas: String,
+    totalInversion: Int
+): Pair<Boolean, String> {
+    return try {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val fileName = "Reporte_Mantenimiento_${timeStamp}.csv"
+
+        val csvBuilder = StringBuilder()
+        csvBuilder.append('\uFEFF') // BOM UTF-8 para compatibilidad nativa con Microsoft Excel
+        csvBuilder.append("REPORTE DE MANTENIMIENTO - TRANSANDINA\n")
+        csvBuilder.append("Vehículo,\"${vehiculoSeleccionado}\"\n")
+        csvBuilder.append("Tipo de Mantenimiento,\"${tipoSeleccionado}\"\n")
+        csvBuilder.append("Rango de Fechas,\"${rangoFechas}\"\n")
+        csvBuilder.append("Fecha de Exportación,\"${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}\"\n\n")
+
+        // Encabezados
+        csvBuilder.append("ID,Placa,Tipo de Mantenimiento,Taller,Descripción,Fecha,Costo (CRC)\n")
+
+        // Registros
+        val numberFormat = NumberFormat.getNumberInstance(Locale.US)
+        mantenimientos.forEach { item ->
+            val desc = item.descripcion.replace("\"", "\"\"")
+            val taller = item.taller.replace("\"", "\"\"")
+            csvBuilder.append("${item.id},${item.placa},${item.tipo.label},\"$taller\",\"$desc\",\"${item.fecha}\",${item.costo}\n")
+        }
+
+        // Fila de resumen total
+        csvBuilder.append("\nTOTAL INVERSIÓN,,,,,,₡${numberFormat.format(totalInversion)}\n")
+
+        val bytes = csvBuilder.toString().toByteArray(Charsets.UTF_8)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val resolver = context.contentResolver
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                ?: return Pair(false, "No se pudo crear el archivo en Descargas")
+            resolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(bytes)
+                outputStream.flush()
+            }
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadsDir.exists()) {
+                downloadsDir.mkdirs()
+            }
+            val file = File(downloadsDir, fileName)
+            FileOutputStream(file).use { outputStream ->
+                outputStream.write(bytes)
+                outputStream.flush()
+            }
+        }
+
+        Pair(true, fileName)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Pair(false, e.localizedMessage ?: "Error al generar el archivo")
     }
 }
 

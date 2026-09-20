@@ -62,7 +62,10 @@ object DatabaseConfig {
                 "com.microsoft.sqlserver.jdbc.TDSReader",
                 "com.microsoft.sqlserver.jdbc.TDSChannel",
                 "com.microsoft.sqlserver.jdbc.TDSWriter",
-                "com.microsoft.sqlserver.jdbc.SQLServerConnection"
+                "com.microsoft.sqlserver.jdbc.SQLServerConnection",
+                "com.microsoft.sqlserver.jdbc.SQLServerStatement",
+                "com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement",
+                "com.microsoft.sqlserver.jdbc.SQLServerCallableStatement"
             )
             for (className in classes) {
                 try {

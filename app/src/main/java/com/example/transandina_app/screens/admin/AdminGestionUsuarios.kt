@@ -1,7 +1,5 @@
 package com.example.transandina_app.screens.admin
 
-package com.example.transandina_app.screens.admin
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,12 +11,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -29,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,12 +45,11 @@ import androidx.compose.ui.unit.sp
 import com.example.transandina_app.ui.theme.TransAndinaAppTheme
 
 // Colores corporativos TransAndina
-// TODO: mover a com.example.transandina_app.ui.theme.Color.kt y compartir entre todas las pantallas
 private val NavyBluePrimary = Color(0xFF132A60)
 private val NavyBlueDark = Color(0xFF0A1838)
 private val LightBlueHeader = Color(0xFFE0F2FE)
-private val CardBlueLight = Color(0xFFA9DDF3)
-private val BackgroundCanvas = Color(0xFFCDEFFB)
+private val AccentBlue = Color(0xFF0284C7)
+private val BackgroundCanvas = Color(0xFFF1F5F9)
 
 @Composable
 fun AdminGestionUsuarios(
@@ -62,25 +69,27 @@ fun AdminGestionUsuarios(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
         ) {
-            // --- 1. ENCABEZADO CON MARCA (mismo estilo que AdminHomeScreen) ---
+            // --- 1. ENCABEZADO CON MARCA (Estilo corporativo TransAndina) ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                    .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(NavyBlueDark, NavyBluePrimary)
                         )
                     )
-                    .padding(top = 44.dp, bottom = 28.dp, start = 20.dp, end = 20.dp)
+                    .padding(top = 46.dp, bottom = 26.dp, start = 20.dp, end = 20.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "Gestión de Mantenimiento de Flotillas",
                         style = MaterialTheme.typography.titleSmall.copy(
                             color = Color.White.copy(alpha = 0.85f),
                             letterSpacing = 0.5.sp
-                        )
+                        ),
+                        textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -89,105 +98,166 @@ fun AdminGestionUsuarios(
                             color = LightBlueHeader,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
-                        )
+                        ),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- 2. TÍTULO DE LA PANTALLA ---
-            Text(
-                text = "Menú Gestión de usuarios",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    color = Color.DarkGray,
-                    fontWeight = FontWeight.Medium
-                ),
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // --- 3. TARJETAS DE CONDUCTORES Y MECÁNICOS (apiladas) ---
+            // --- 2. TÍTULO Y SUBTÍTULO ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Gestión de Usuarios",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        color = NavyBluePrimary,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Selecciona una categoría para consultar y administrar el personal registrado",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFF64748B)
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // --- 3. TARJETAS CORPORATIVAS DE CONDUCTORES Y MECÁNICOS ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 UsuariosMenuCard(
                     title = "Conductores",
+                    subtitle = "Control de asignaciones, licencias y estado de disponibilidad de choferes.",
+                    icon = Icons.Default.DirectionsCar,
                     onClick = onNavigateToConductores
                 )
 
                 UsuariosMenuCard(
                     title = "Mecánicos",
+                    subtitle = "Gestión de mecánicos de planta, talleres asignados y estado operativo.",
+                    icon = Icons.Default.Build,
                     onClick = onNavigateToMecanicos
                 )
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
             // --- 4. BOTÓN VOLVER ---
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
                 OutlinedButton(
                     onClick = onVolver,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = NavyBluePrimary
                     ),
-                    modifier = Modifier.width(140.dp)
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, NavyBluePrimary),
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(48.dp)
                 ) {
                     Text(
                         text = "Volver",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = NavyBluePrimary
                         )
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
-// Tarjeta reutilizable para cada opción del menú (Conductores / Mecánicos)
+// Tarjeta reutilizable y moderna para cada opción del menú (Conductores / Mecánicos)
 @Composable
 private fun UsuariosMenuCard(
     title: String,
+    subtitle: String,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(110.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBlueLight),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 5.dp
-        )
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = NavyBluePrimary
+            // Icono en contenedor circular con fondo celeste corporativo
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(LightBlueHeader),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = NavyBluePrimary,
+                    modifier = Modifier.size(28.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Textos descriptivos
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = NavyBluePrimary
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color(0xFF64748B),
+                        lineHeight = 16.sp
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Flecha indicadora
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = "Abrir sección",
+                tint = Color(0xFF94A3B8),
+                modifier = Modifier.size(16.dp)
             )
         }
     }
