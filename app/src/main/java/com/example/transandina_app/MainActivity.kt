@@ -1,6 +1,21 @@
 package com.example.transandina_app
 
 import android.os.Bundle
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.transandina_app.data.database.ConductorSqlClient
+import com.example.transandina_app.data.model.VehiculoConductor
+import com.example.transandina_app.data.repository.ConductorCatalogoRepository
+import com.example.transandina_app.screens.admin.KilometrajeRegistroScreen
+import com.example.transandina_app.screens.admin.KilometrajeGraficoScreen
+import com.example.transandina_app.screens.admin.RegistroMantenimientoScreen
+import com.example.transandina_app.screens.admin.HistorialVehiculoScreen
+import com.example.transandina_app.screens.admin.NotificacionesVehiculoScreen
+import com.example.transandina_app.screens.admin.ConfirmarRegistroKilometrajeScreen
+import com.example.transandina_app.screens.admin.ConfirmarRegistroMantenimientoScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +37,7 @@ import com.example.transandina_app.data.model.Usuario
 import com.example.transandina_app.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 import com.example.transandina_app.screens.admin.AdminHomeScreen
+import com.example.transandina_app.screens.conductor.ConductorHomeScreen
 import com.example.transandina_app.screens.admin.EstadoDocumento
 import com.example.transandina_app.screens.admin.EstadoSemaforo
 import com.example.transandina_app.screens.admin.FichaVehicular
@@ -52,6 +68,12 @@ class MainActivity : ComponentActivity() {
                 var isRegistering by remember { mutableStateOf(false) }
                 var registerErrorMessage by remember { mutableStateOf<String?>(null) }
 
+                val conductorCatalogoRepository = remember { ConductorCatalogoRepository() }
+                var placaConductor by remember { mutableStateOf("") }
+                var vehiculosConductor by remember { mutableStateOf<List<VehiculoConductor>>(emptyList()) }
+                var mostrarSelectorGrafica by remember { mutableStateOf(false) }
+                var cargandoVehiculosGrafica by remember { mutableStateOf(false) }
+
                 when (currentScreen) {
                     "login" -> {
                         LoginScreen(
@@ -73,6 +95,15 @@ class MainActivity : ComponentActivity() {
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                             currentScreen = "admin_home"
+                                        } else if (usuario.esConductor) {
+                                            ConductorSqlClient.iniciarSesion(usuario.idUsuario)
+                                            placaConductor = ""
+                                            Toast.makeText(
+                                                context,
+                                                "¡Bienvenido(a) ${usuario.nombreCompleto} ($rolFormateado)!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            currentScreen = "conductor_home"
                                         } else {
                                             // Conductor o Mecánico: solo mensaje de bienvenida sin redirigir a admin_home
                                             Toast.makeText(
@@ -154,6 +185,99 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                    "conductor_home" -> {
+                        ConductorHomeScreen(
+                            onNavigateToUsers = {
+                                currentScreen = "conductor_kilometraje"
+                            },
+                            onNavigateToVehicles = {
+                                if (!cargandoVehiculosGrafica) {
+                                    cargandoVehiculosGrafica = true
+                                    val idSolicitante = usuarioLogueado?.idUsuario
+                                    coroutineScope.launch {
+                                        try {
+                                            val result = conductorCatalogoRepository.obtenerFlotilla()
+                                            if (currentScreen == "conductor_home" && usuarioLogueado?.idUsuario == idSolicitante) {
+                                                result.onSuccess { vehiculos ->
+                                                    when (vehiculos.size) {
+                                                        0 -> Toast.makeText(context, "No tienes vehículos asignados.", Toast.LENGTH_SHORT).show()
+                                                        1 -> {
+                                                            placaConductor = vehiculos.first().placa
+                                                            currentScreen = "conductor_grafica"
+                                                        }
+                                                        else -> {
+                                                            vehiculosConductor = vehiculos
+                                                            mostrarSelectorGrafica = true
+                                                        }
+                                                    }
+                                                }.onFailure { error ->
+                                                    Toast.makeText(context, error.localizedMessage ?: "No se pudieron cargar los vehículos.", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        } finally {
+                                            cargandoVehiculosGrafica = false
+                                        }
+                                    }
+                                }
+                            },
+                            onNavigateToRecords = {
+                                currentScreen = "conductor_mantenimiento"
+                            },
+                            onNavigateToFleet = {
+                                currentScreen = "conductor_historial"
+                            },
+                            onNavigateToAlerts = {
+                                currentScreen = "conductor_notificaciones"
+                            },
+                            onLogout = {
+                                ConductorSqlClient.cerrarSesion()
+                                placaConductor = ""
+                                vehiculosConductor = emptyList()
+                                mostrarSelectorGrafica = false
+                                usuarioLogueado = null
+                                loginErrorMessage = null
+                                currentScreen = "login"
+                            }
+                        )
+                    }
+                    "conductor_kilometraje" -> {
+                        KilometrajeRegistroScreen(
+                            onNavigateBack = { currentScreen = "conductor_home" },
+                            onRegistroExitoso = { currentScreen = "conductor_confirmar_kilometraje" }
+                        )
+                    }
+                    "conductor_confirmar_kilometraje" -> {
+                        ConfirmarRegistroKilometrajeScreen(
+                            onFinalizar = { currentScreen = "conductor_home" }
+                        )
+                    }
+                    "conductor_grafica" -> {
+                        KilometrajeGraficoScreen(
+                            placa = placaConductor,
+                            onNavigateBack = { currentScreen = "conductor_home" }
+                        )
+                    }
+                    "conductor_mantenimiento" -> {
+                        RegistroMantenimientoScreen(
+                            onNavigateBack = { currentScreen = "conductor_home" },
+                            onRegistroExitoso = { currentScreen = "conductor_confirmar_mantenimiento" }
+                        )
+                    }
+                    "conductor_confirmar_mantenimiento" -> {
+                        ConfirmarRegistroMantenimientoScreen(
+                            onFinalizar = { currentScreen = "conductor_home" }
+                        )
+                    }
+                    "conductor_historial" -> {
+                        HistorialVehiculoScreen(
+                            onNavigateBack = { currentScreen = "conductor_home" }
+                        )
+                    }
+                    "conductor_notificaciones" -> {
+                        NotificacionesVehiculoScreen(
+                            onNavigateBack = { currentScreen = "conductor_home" }
+                        )
+                    }
                     "fleet_management" -> {
                         FleetManagementScreen(
                             onNavigateBack = {
@@ -190,6 +314,30 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                }
+
+                if (mostrarSelectorGrafica && currentScreen == "conductor_home") {
+                    AlertDialog(
+                        onDismissRequest = { mostrarSelectorGrafica = false },
+                        title = { Text("Selecciona el vehículo") },
+                        text = {
+                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                vehiculosConductor.forEach { vehiculo ->
+                                    TextButton(onClick = {
+                                        placaConductor = vehiculo.placa
+                                        mostrarSelectorGrafica = false
+                                        currentScreen = "conductor_grafica"
+                                    }) {
+                                        Text(vehiculo.placa + " · " + vehiculo.nombreVehiculo)
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { mostrarSelectorGrafica = false }) { Text("Cancelar") }
+                        }
+                    )
                 }
             }
         }

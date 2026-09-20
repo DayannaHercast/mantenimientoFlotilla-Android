@@ -1,6 +1,13 @@
+package com.example.transandina_app.screens.conductor
 
-package com.example.transandina_app.screens.admin
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.transandina_app.data.database.ConductorSqlClient
+import com.example.transandina_app.data.repository.NotificacionRepository
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +34,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -57,7 +65,7 @@ private val AccentBlue = Color(0xFF0284C7)
 private val BackgroundCanvas = Color(0xFFF1F5F9)
 
 @Composable
-fun AdminHomeScreen(
+fun ConductorHomeScreen(
     modifier: Modifier = Modifier,
     onNavigateToUsers: () -> Unit = {},
     onNavigateToVehicles: () -> Unit = {},
@@ -67,6 +75,19 @@ fun AdminHomeScreen(
     onLogout: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
+    val notificacionRepository = remember { NotificacionRepository() }
+    val usuario by ConductorSqlClient.usuarioActual.collectAsState()
+    val revision by NotificacionRepository.cambios.collectAsState()
+    var intento by remember { mutableStateOf(0) }
+    var noLeidas by remember { mutableStateOf(0) }
+    var errorInicio by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(usuario, revision, intento) {
+        noLeidas = 0
+        errorInicio = null
+        if (usuario == null) errorInicio = "Inicia sesión para cargar tus alertas."
+        else notificacionRepository.obtenerNoLeidas().onSuccess { noLeidas = it }
+            .onFailure { errorInicio = it.localizedMessage ?: "No se pudieron cargar las alertas." }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -116,11 +137,14 @@ fun AdminHomeScreen(
                     // Icono de Notificaciones con Badge de alertas
                     BadgedBox(
                         badge = {
-                            Badge(
+                            if (noLeidas > 0) Badge(
                                 containerColor = Color(0xFFEF4444), // Rojo de alerta
                                 contentColor = Color.White
                             ) {
-                                Text(text = "3", fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = if (noLeidas > 99) "99+" else noLeidas.toString(),
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     ) {
@@ -157,12 +181,18 @@ fun AdminHomeScreen(
                     )
                 )
                 Text(
-                    text = "Módulo de Administración y Control",
+                    text = "Módulo del conductor",
                     style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray)
                 )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            errorInicio?.let { mensaje ->
+                Text(
+                    text = "$mensaje Toca para reintentar.", color = Color(0xFF991B1B),
+                    modifier = Modifier.padding(horizontal = 20.dp).clickable { intento++ })
+            }
 
             // --- 3. CUADRÍCULA 2x2 CON LOS 4 CUADRADOS PRINCIPALES ---
             Column(
@@ -171,14 +201,14 @@ fun AdminHomeScreen(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // FILA 1: Usuarios y Vehículos
+                // FILA 1: Kilometraje y grafica
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    AdminModuleCard(
-                        title = "Usuarios",
-                        subtitle = "Conductores y Mecánicos",
+                    CondcModuleCard(
+                        title = "Kilometraje",
+                        subtitle = "Registrar Kilometraje",
                         icon = Icons.Default.People,
                         iconTint = Color(0xFF2563EB),
                         iconBackground = Color(0xFFDBEAFE),
@@ -186,9 +216,9 @@ fun AdminHomeScreen(
                         onClick = onNavigateToUsers
                     )
 
-                    AdminModuleCard(
-                        title = "Vehículos",
-                        subtitle = "Registro e Inventario",
+                    CondcModuleCard(
+                        title = "Grafico",
+                        subtitle = "Ver el grafico de Kilometraje",
                         icon = Icons.Default.DirectionsCar,
                         iconTint = Color(0xFF0D9488),
                         iconBackground = Color(0xFFCCFBF1),
@@ -197,14 +227,14 @@ fun AdminHomeScreen(
                     )
                 }
 
-                // FILA 2: Registros y Flotilla
+                // FILA 2: Mantenimiento e historial
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    AdminModuleCard(
-                        title = "Registros",
-                        subtitle = "Mantenimientos y Fotos",
+                    CondcModuleCard(
+                        title = "Mantenimiento",
+                        subtitle = "Registrar Mantenimiento",
                         icon = Icons.Default.Build,
                         iconTint = Color(0xFFD97706),
                         iconBackground = Color(0xFFFEF3C7),
@@ -212,9 +242,9 @@ fun AdminHomeScreen(
                         onClick = onNavigateToRecords
                     )
 
-                    AdminModuleCard(
-                        title = "Flotilla",
-                        subtitle = "Semáforos y Reportes",
+                    CondcModuleCard(
+                        title = "Historial",
+                        subtitle = "Historial vehicular",
                         icon = Icons.Default.Assessment,
                         iconTint = Color(0xFF7C3AED),
                         iconBackground = Color(0xFFEDE9FE),
@@ -234,12 +264,12 @@ fun AdminHomeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 OutlinedButton(
-                    onClick = onLogout,
+                    onClick = { ConductorSqlClient.cerrarSesion(); onLogout() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = NavyBluePrimary
                     )
                 ) {
@@ -267,7 +297,7 @@ fun AdminHomeScreen(
 
 // Componente reutilizable para cada uno de los 4 cuadrados del menú
 @Composable
-private fun AdminModuleCard(
+private fun CondcModuleCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
@@ -335,8 +365,8 @@ private fun AdminModuleCard(
 // --- VISTA PREVIA PARA ANDROID STUDIO ---
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun AdminHomeScreenPreview() {
+fun ConductorHomeScreenPreview() {
     TransAndinaAppTheme {
-        AdminHomeScreen()
+        ConductorHomeScreen()
     }
 }
