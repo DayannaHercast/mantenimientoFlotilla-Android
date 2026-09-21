@@ -61,20 +61,20 @@ private val BackgroundCanvas = Color(0xFFF1F5F9)
 
 // Datos completos de la ficha técnica de un vehículo
 data class FichaTecnicaVehiculo(
-    val placa: String = "DDD-123",
-    val marca: String = "Toyota",
-    val modelo: String = "Hilux",
+    val placa: String = "",
+    val marca: String = "",
+    val modelo: String = "",
     val estado: String = "Activo",
-    val conductorActual: String = "Juan Pérez López",
-    val anio: String = "2022",
-    val capacidad: String = "5 pasajeros / 1 ton",
-    val tipoVehiculo: String = "Camioneta",
-    val kilometrajeActual: String = "48500",
-    val vencimientoRtv: String = "2026-11-30",
-    val vencimientoMarchamo: String = "2026-12-31",
-    val vencimientoSeguro: String = "2026-12-31",
-    val vencimientoDocumentos: String = "2026-11-30",
-    val kilometraje: String = "48500 KM"
+    val conductorActual: String = "Sin conductor asignado",
+    val anio: String = "",
+    val capacidad: String = "",
+    val tipoVehiculo: String = "",
+    val kilometrajeActual: String = "0",
+    val vencimientoRtv: String = "",
+    val vencimientoMarchamo: String = "",
+    val vencimientoSeguro: String = "",
+    val vencimientoDocumentos: String = "",
+    val kilometraje: String = "0 KM"
 )
 
 @Composable

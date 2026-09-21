@@ -13,6 +13,10 @@ import java.sql.Date
 import java.sql.SQLException
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.example.transandina_app.screens.admin.MantenimientoItem
+import com.example.transandina_app.screens.admin.TipoMantenimiento
+import com.example.transandina_app.screens.admin.EvidenciaDetalle
+import org.json.JSONArray
 
 class VehiculoRepository {
 
@@ -248,6 +252,123 @@ class VehiculoRepository {
         } catch (t: Throwable) {
             t.printStackTrace()
             Result.failure(Exception("Error inesperado: ${t.localizedMessage}", t))
+        }
+    }
+
+    /**
+     * Consulta todos los mantenimientos registrados en la flotilla junto con sus evidencias reales desde Azure SQL.
+     */
+    suspend fun obtenerReporteMantenimientosFlotilla(): Result<List<MantenimientoItem>> = withContext(Dispatchers.IO) {
+        val sql = "EXEC dbo.sp_ObtenerMantenimientosFlotillaAdmin"
+        val lista = mutableListOf<MantenimientoItem>()
+
+        try {
+            DatabaseConfig.getConnection().use { conn ->
+                conn.createStatement().use { stmt ->
+                    stmt.executeQuery(sql).use { rs ->
+                        val displayDateFormatter = SimpleDateFormat("dd MMM yyyy", Locale.forLanguageTag("es-ES"))
+                        val sqlDateParser = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+                        while (rs.next()) {
+                            val id = rs.getInt("idMantenimiento").toString()
+                            val placa = rs.getString("placa") ?: ""
+                            val tipoRaw = rs.getString("tipoServicio") ?: "preventivo"
+                            val tipo = if (tipoRaw.contains("correctivo", ignoreCase = true)) {
+                                TipoMantenimiento.CORRECTIVO
+                            } else {
+                                TipoMantenimiento.PREVENTIVO
+                            }
+                            val taller = rs.getString("taller") ?: "Taller no especificado"
+                            val descripcion = rs.getString("descripcion") ?: ""
+                            val fechaStr = rs.getString("fechaStr") ?: "2026-01-01"
+                            val fechaMillis = rs.getLong("fechaMillis")
+                            val costo = rs.getInt("costo")
+                            val evidenciasJson = rs.getString("evidenciasJson")
+
+                            val evidenciasNombres = mutableListOf<String>()
+                            val evidenciasDetalles = mutableListOf<EvidenciaDetalle>()
+
+                            if (!evidenciasJson.isNullOrBlank()) {
+                                try {
+                                    val jsonArray = JSONArray(evidenciasJson)
+                                    for (i in 0 until jsonArray.length()) {
+                                        val obj = jsonArray.getJSONObject(i)
+                                        val idEvidencia = obj.optInt("idEvidenciaMantenimiento")
+                                        val nombre = obj.optString("nombreArchivo", "evidencia.jpg")
+                                        val tipoEv = obj.optString("tipoEvidencia", "foto")
+                                        val tieneArchivo = obj.optInt("tieneArchivo", 0) == 1
+                                        evidenciasNombres.add(nombre)
+                                        evidenciasDetalles.add(
+                                            EvidenciaDetalle(
+                                                idEvidencia = idEvidencia,
+                                                nombreArchivo = nombre,
+                                                tipoEvidencia = tipoEv,
+                                                tieneArchivo = tieneArchivo
+                                            )
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+
+                            val fechaFormateada = try {
+                                val d = sqlDateParser.parse(fechaStr)
+                                if (d != null) displayDateFormatter.format(d) else fechaStr
+                            } catch (_: Exception) {
+                                fechaStr
+                            }
+
+                            lista.add(
+                                MantenimientoItem(
+                                    id = id,
+                                    placa = placa,
+                                    tipo = tipo,
+                                    taller = taller,
+                                    descripcion = descripcion,
+                                    fecha = fechaFormateada,
+                                    fechaMillis = fechaMillis,
+                                    costo = costo,
+                                    evidencias = evidenciasNombres,
+                                    evidenciasDetalle = evidenciasDetalles
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            Result.success(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Descarga los bytes de la imagen real almacenada en dbo.archivoEvidenciaConductor para una evidencia específica.
+     */
+    suspend fun obtenerBytesEvidencia(idEvidencia: Int): Result<ByteArray> = withContext(Dispatchers.IO) {
+        val sql = "EXEC dbo.sp_ObtenerArchivoEvidenciaAdmin @IdEvidenciaMantenimiento = $idEvidencia"
+        try {
+            DatabaseConfig.getConnection().use { conn ->
+                conn.createStatement().use { stmt ->
+                    stmt.executeQuery(sql).use { rs ->
+                        if (rs.next()) {
+                            val bytes = rs.getBytes("contenido")
+                            if (bytes != null && bytes.isNotEmpty()) {
+                                Result.success(bytes)
+                            } else {
+                                Result.failure(Exception("La evidencia no contiene datos de imagen."))
+                            }
+                        } else {
+                            Result.failure(Exception("No se encontró el archivo de evidencia en la base de datos."))
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
         }
     }
 }

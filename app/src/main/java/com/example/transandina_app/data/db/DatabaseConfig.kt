@@ -63,13 +63,11 @@ object DatabaseConfig {
                 "com.microsoft.sqlserver.jdbc.TDSChannel",
                 "com.microsoft.sqlserver.jdbc.TDSWriter",
                 "com.microsoft.sqlserver.jdbc.SQLServerConnection",
-                "com.microsoft.sqlserver.jdbc.SQLServerStatement",
-                "com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement",
-                "com.microsoft.sqlserver.jdbc.SQLServerCallableStatement"
+                "com.microsoft.sqlserver.jdbc.SQLServerStatement"
             )
             for (className in classes) {
                 try {
-                    val clazz = Class.forName(className)
+                    val clazz = Class.forName(className, false, cl)
                     val field = clazz.getDeclaredField("\$assertionsDisabled")
                     field.isAccessible = true
                     field.setBoolean(null, true)

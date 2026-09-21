@@ -481,3 +481,59 @@ BEGIN
 END;
 GO
 
+-- ============================================================================
+-- 12. SP: sp_ObtenerMantenimientosFlotillaAdmin
+-- Descripción: Obtiene el listado completo de mantenimientos con sus evidencias asociadas en JSON.
+-- ============================================================================
+CREATE OR ALTER PROCEDURE dbo.sp_ObtenerMantenimientosFlotillaAdmin
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        m.idMantenimiento,
+        m.placa,
+        m.tipoServicio,
+        m.taller,
+        m.descripcion,
+        CONVERT(VARCHAR(10), m.fechaMantenimiento, 120) AS fechaStr,
+        DATEDIFF_BIG(MILLISECOND, '1970-01-01', CONVERT(DATETIME2, m.fechaMantenimiento)) AS fechaMillis,
+        CONVERT(INT, m.costoTotal) AS costo,
+        (
+            SELECT 
+                e.idEvidenciaMantenimiento,
+                e.nombreArchivo,
+                e.tipoEvidencia,
+                CASE WHEN a.idEvidenciaMantenimiento IS NOT NULL THEN 1 ELSE 0 END AS tieneArchivo
+            FROM dbo.evidenciaMantenimiento e
+            LEFT JOIN dbo.archivoEvidenciaConductor a ON a.idEvidenciaMantenimiento = e.idEvidenciaMantenimiento
+            WHERE e.idMantenimiento = m.idMantenimiento
+            ORDER BY e.idEvidenciaMantenimiento ASC
+            FOR JSON PATH
+        ) AS evidenciasJson
+    FROM dbo.mantenimiento m
+    ORDER BY m.fechaMantenimiento DESC, m.idMantenimiento DESC;
+END;
+GO
+
+-- ============================================================================
+-- 13. SP: sp_ObtenerArchivoEvidenciaAdmin
+-- Descripción: Obtiene los bytes binarios reales de una evidencia para su visualización.
+-- ============================================================================
+CREATE OR ALTER PROCEDURE dbo.sp_ObtenerArchivoEvidenciaAdmin
+    @IdEvidenciaMantenimiento INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        e.idEvidenciaMantenimiento,
+        e.nombreArchivo,
+        e.tipoEvidencia,
+        a.tipoMime,
+        a.contenido
+    FROM dbo.evidenciaMantenimiento e
+    JOIN dbo.archivoEvidenciaConductor a ON a.idEvidenciaMantenimiento = e.idEvidenciaMantenimiento
+    WHERE e.idEvidenciaMantenimiento = @IdEvidenciaMantenimiento;
+END;
+GO
+
+
