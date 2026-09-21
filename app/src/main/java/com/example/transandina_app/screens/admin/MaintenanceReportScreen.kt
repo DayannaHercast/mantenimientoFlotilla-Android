@@ -32,6 +32,20 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DirectionsCar
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -50,13 +64,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import com.example.transandina_app.data.repository.VehiculoRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -93,6 +117,13 @@ enum class TipoMantenimiento(
     CORRECTIVO("CORRECTIVO", Color(0xFFFFEDD5), Color(0xFFC2410C))
 }
 
+data class EvidenciaDetalle(
+    val idEvidencia: Int,
+    val nombreArchivo: String,
+    val tipoEvidencia: String = "foto",
+    val tieneArchivo: Boolean = true
+)
+
 // Modelo de datos para cada registro de mantenimiento
 data class MantenimientoItem(
     val id: String,
@@ -103,7 +134,8 @@ data class MantenimientoItem(
     val fecha: String,
     val fechaMillis: Long,
     val costo: Int,
-    val evidencias: List<String> = listOf("Factura_Taller.jpg", "Reparacion_Foto1.jpg")
+    val evidencias: List<String> = emptyList(),
+    val evidenciasDetalle: List<EvidenciaDetalle> = emptyList()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,140 +146,44 @@ fun MaintenanceReportScreen(
 ) {
     val context = LocalContext.current
 
-    // Base de datos de prueba de mantenimientos completa para todos los vehículos
-    val mantenimientosIniciales = remember {
-        listOf(
-            // Mantenimientos DDD-123
-            MantenimientoItem(
-                id = "1",
-                placa = "DDD-123",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Lubricentro Total",
-                descripcion = "Cambio de aceite sintético y filtro de motor",
-                fecha = "15 Ene 2026",
-                fechaMillis = 1768435200000L,
-                costo = 52000
-            ),
-            MantenimientoItem(
-                id = "2",
-                placa = "DDD-123",
-                tipo = TipoMantenimiento.CORRECTIVO,
-                taller = "Frenos del Valle",
-                descripcion = "Sustitución de pastillas de freno delanteras",
-                fecha = "28 Ago 2025",
-                fechaMillis = 1756339200000L,
-                costo = 85000
-            ),
-            MantenimientoItem(
-                id = "3",
-                placa = "DDD-123",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Taller Central",
-                descripcion = "Alineación y revisión general",
-                fecha = "10 May 2024",
-                fechaMillis = 1715299200000L,
-                costo = 45000
-            ),
-            // Mantenimientos DDD-124
-            MantenimientoItem(
-                id = "4",
-                placa = "DDD-124",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Taller Mecánico Central",
-                descripcion = "Cambio de aceite, filtros y afinación general",
-                fecha = "15 Mar 2026",
-                fechaMillis = 1773532800000L,
-                costo = 98700
-            ),
-            MantenimientoItem(
-                id = "5",
-                placa = "DDD-124",
-                tipo = TipoMantenimiento.CORRECTIVO,
-                taller = "AutoServ López",
-                descripcion = "Reparación de frenos traseros",
-                fecha = "10 Nov 2025",
-                fechaMillis = 1762732800000L,
-                costo = 258500
-            ),
-            MantenimientoItem(
-                id = "6",
-                placa = "DDD-124",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Lubricentro Total",
-                descripcion = "Mantenimiento preventivo 20,000 km",
-                fecha = "14 Jun 2024",
-                fechaMillis = 1718323200000L,
-                costo = 65000
-            ),
-            // Mantenimientos DDD-125
-            MantenimientoItem(
-                id = "7",
-                placa = "DDD-125",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Taller Central",
-                descripcion = "Mantenimiento preventivo 40,000 km",
-                fecha = "05 Feb 2026",
-                fechaMillis = 1770249600000L,
-                costo = 110000
-            ),
-            MantenimientoItem(
-                id = "8",
-                placa = "DDD-125",
-                tipo = TipoMantenimiento.CORRECTIVO,
-                taller = "Suspensión Pro",
-                descripcion = "Cambio de amortiguadores y terminales",
-                fecha = "18 Nov 2025",
-                fechaMillis = 1763424000000L,
-                costo = 220000
-            ),
-            // Mantenimientos DDD-126
-            MantenimientoItem(
-                id = "9",
-                placa = "DDD-126",
-                tipo = TipoMantenimiento.CORRECTIVO,
-                taller = "Transmisiones CR",
-                descripcion = "Reparación de embrague y disco",
-                fecha = "12 Jul 2026",
-                fechaMillis = 1783814400000L,
-                costo = 340000
-            ),
-            MantenimientoItem(
-                id = "10",
-                placa = "DDD-126",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Taller 4x4",
-                descripcion = "Cambio de fluidos y revisión de diferenciales",
-                fecha = "20 Jul 2024",
-                fechaMillis = 1721433600000L,
-                costo = 125000
-            ),
-            // Mantenimientos DDD-127
-            MantenimientoItem(
-                id = "11",
-                placa = "DDD-127",
-                tipo = TipoMantenimiento.PREVENTIVO,
-                taller = "Servicio Diesel Nissan",
-                descripcion = "Alineación, balanceo y rotación de llantas",
-                fecha = "08 Ago 2026",
-                fechaMillis = 1786147200000L,
-                costo = 75000
-            ),
-            // Mantenimientos DDD-128
-            MantenimientoItem(
-                id = "12",
-                placa = "DDD-128",
-                tipo = TipoMantenimiento.CORRECTIVO,
-                taller = "Repuestos & Talleres Sur",
-                descripcion = "Cambio de bomba de agua y faja de distribución",
-                fecha = "19 Feb 2025",
-                fechaMillis = 1739923200000L,
-                costo = 195000
-            )
-        )
+    val coroutineScope = rememberCoroutineScope()
+    val vehiculoRepository = remember { VehiculoRepository() }
+    var mantenimientosList by remember { mutableStateOf<List<MantenimientoItem>>(emptyList()) }
+    var listaPlacasFlotilla by remember { mutableStateOf<List<String>>(emptyList()) }
+    var estaCargandoBd by remember { mutableStateOf(true) }
+    var errorCargaBd by remember { mutableStateOf<String?>(null) }
+
+    fun recargarDatosDesdeAzure() {
+        estaCargandoBd = true
+        errorCargaBd = null
+        coroutineScope.launch {
+            // Cargar placas reales de flotilla desde Azure SQL
+            val resFlotilla = vehiculoRepository.obtenerFlotilla()
+            resFlotilla.onSuccess { flotilla ->
+                listaPlacasFlotilla = flotilla.map { it.placa }.filter { it.isNotBlank() }.distinct().sorted()
+            }
+
+            // Cargar mantenimientos reales desde Azure SQL
+            val resMantenimientos = vehiculoRepository.obtenerReporteMantenimientosFlotilla()
+            resMantenimientos.onSuccess { dbList ->
+                mantenimientosList = dbList
+                errorCargaBd = null
+            }.onFailure { err ->
+                errorCargaBd = err.localizedMessage ?: "Error al conectar con la base de datos de Azure."
+            }
+            estaCargandoBd = false
+        }
     }
 
-    // Opciones de filtros
-    val vehiculosOpciones = listOf("Todos los Vehículos", "DDD-123", "DDD-124", "DDD-125", "DDD-126", "DDD-127", "DDD-128")
+    LaunchedEffect(Unit) {
+        recargarDatosDesdeAzure()
+    }
+
+    // Opciones de vehículos: Provienen 100% de Azure SQL (flotilla y mantenimientos)
+    val vehiculosOpciones = remember(mantenimientosList, listaPlacasFlotilla) {
+        val placas = (listaPlacasFlotilla + mantenimientosList.map { it.placa }).filter { it.isNotBlank() }.distinct().sorted()
+        listOf("Todos los Vehículos") + placas
+    }
     val tiposOpciones = listOf("Todos", "Preventivo", "Correctivo")
     val rangosFechas = listOf(
         "Todo el historial",
@@ -276,6 +212,7 @@ fun MaintenanceReportScreen(
 
     // Estado del diálogo de evidencias fotográficas
     var selectedItemParaEvidencia by remember { mutableStateOf<MantenimientoItem?>(null) }
+    var fotoSeleccionadaParaVer by remember { mutableStateOf<Triple<String, MantenimientoItem, Int?>?>(null) }
 
     // Estado para la pantalla de éxito de exportación a Excel
     var showSuccessExportScreen by remember { mutableStateOf(false) }
@@ -288,9 +225,9 @@ fun MaintenanceReportScreen(
         selectedRango,
         customDateStartMillis,
         customDateEndMillis,
-        mantenimientosIniciales
+        mantenimientosList
     ) {
-        mantenimientosIniciales.filter { item ->
+        mantenimientosList.filter { item ->
             // Filtro por vehículo
             val coincideVehiculo = selectedVehiculo == "Todos los Vehículos" || item.placa == selectedVehiculo
 
@@ -504,8 +441,77 @@ fun MaintenanceReportScreen(
                     )
                 }
 
-                // Lista de Registros de Mantenimiento
-                if (mantenimientosFiltrados.isEmpty()) {
+                // Lista de Registros de Mantenimiento cargados desde Azure SQL
+                if (estaCargandoBd) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(28.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                CircularProgressIndicator(color = NavyBluePrimary, strokeWidth = 3.dp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Consultando mantenimientos en Azure SQL...",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = NavyBluePrimary,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } else if (errorCargaBd != null && mantenimientosList.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                            border = BorderStroke(1.dp, Color(0xFFFCA5A5))
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFDC2626),
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Error de conexión con Azure SQL",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        color = Color(0xFFDC2626),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = errorCargaBd ?: "",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Button(
+                                    onClick = { recargarDatosDesdeAzure() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = NavyBluePrimary),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = Color.White)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Reintentar conexión", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                } else if (mantenimientosFiltrados.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -514,7 +520,7 @@ fun MaintenanceReportScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No hay registros para los filtros seleccionados",
+                                text = if (mantenimientosList.isEmpty()) "No hay mantenimientos registrados en la base de datos de Azure" else "No hay registros para los filtros seleccionados",
                                 style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
                                 textAlign = TextAlign.Center
                             )
@@ -646,40 +652,105 @@ fun MaintenanceReportScreen(
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold)
                         )
 
-                        // Simulación de fotos de evidencia adjuntas
-                        item.evidencias.forEach { foto ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFFF1F5F9))
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        // Lista de evidencias reales con archivo en la base de datos
+                        val evidenciasAMostrar = item.evidenciasDetalle.filter { it.tieneArchivo && it.idEvidencia > 0 }
+
+                        if (evidenciasAMostrar.isEmpty()) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
                             ) {
-                                Box(
+                                Column(
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFBAE6FD)),
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .padding(18.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Image,
                                         contentDescription = null,
-                                        tint = AccentBlue,
-                                        modifier = Modifier.size(20.dp)
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Sin imágenes en la base de datos",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = NavyBluePrimary
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "No se encontraron imágenes o comprobantes guardados para este mantenimiento.",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = foto,
-                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                    Text(
-                                        text = "Evidencia fotográfica adjunta",
-                                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                                    )
+                            }
+                        } else {
+                            evidenciasAMostrar.forEach { ev ->
+                                val isInvoice = ev.tipoEvidencia.equals("factura", ignoreCase = true) || ev.nombreArchivo.contains("Factura", ignoreCase = true) || ev.nombreArchivo.contains("Recibo", ignoreCase = true)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFF1F5F9))
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isInvoice) Color(0xFFFEF3C7) else Color(0xFFBAE6FD)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isInvoice) Icons.Default.Receipt else Icons.Default.Image,
+                                            contentDescription = null,
+                                            tint = if (isInvoice) Color(0xFFD97706) else AccentBlue,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = ev.nombreArchivo,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = if (isInvoice) "Comprobante fiscal / Factura" else "Foto real cargada",
+                                            style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Button(
+                                        onClick = {
+                                            fotoSeleccionadaParaVer = Triple(ev.nombreArchivo, item, ev.idEvidencia)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = NavyBluePrimary),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(34.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Visibility,
+                                            contentDescription = "Ver",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Ver",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -691,6 +762,486 @@ fun MaintenanceReportScreen(
                     }
                 }
             )
+        }
+
+        // --- 5.1 DIÁLOGO VISUALIZADOR DE EVIDENCIA INDIVIDUAL ---
+        fotoSeleccionadaParaVer?.let { (foto, item, idEvidencia) ->
+            val context = LocalContext.current
+            val isInvoice = foto.contains("Factura", ignoreCase = true) || foto.contains("Recibo", ignoreCase = true)
+            var cargandoImagenBd by remember(idEvidencia) { mutableStateOf(idEvidencia != null && idEvidencia > 0) }
+            var bitmapDescargado by remember(idEvidencia) { mutableStateOf<android.graphics.Bitmap?>(null) }
+            var errorDescarga by remember(idEvidencia) { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(idEvidencia) {
+                if (idEvidencia != null && idEvidencia > 0) {
+                    cargandoImagenBd = true
+                    errorDescarga = null
+                    val res = vehiculoRepository.obtenerBytesEvidencia(idEvidencia)
+                    res.onSuccess { bytes ->
+                        try {
+                            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            if (bmp != null) {
+                                bitmapDescargado = bmp
+                            } else {
+                                errorDescarga = "No se pudo interpretar el formato de la imagen."
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            errorDescarga = "Error al procesar la imagen: ${e.message}"
+                        }
+                    }.onFailure { err ->
+                        errorDescarga = err.message ?: "No se pudo descargar la imagen de la base de datos."
+                    }
+                    cargandoImagenBd = false
+                }
+            }
+
+            // Intento de cargar imagen real (si es de BD, URI local o base64)
+            val realBitmap = bitmapDescargado ?: remember(foto) {
+                try {
+                    if (foto.startsWith("content://") || foto.startsWith("file://")) {
+                        val uri = Uri.parse(foto)
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            BitmapFactory.decodeStream(stream)
+                        }
+                    } else if (foto.length > 100 && !foto.contains(" ")) {
+                        val decodedBytes = Base64.decode(foto, Base64.DEFAULT)
+                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            Dialog(
+                onDismissRequest = { fotoSeleccionadaParaVer = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.94f)
+                        .heightIn(max = 680.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Header del visor
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isInvoice) Color(0xFFFEF3C7) else Color(0xFFE0F2FE)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isInvoice) Icons.Default.Receipt else Icons.Default.Image,
+                                        contentDescription = null,
+                                        tint = if (isInvoice) Color(0xFFD97706) else AccentBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = if (isInvoice) "Comprobante Fiscal" else "Evidencia Fotográfica",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = NavyBluePrimary
+                                        )
+                                    )
+                                    Text(
+                                        text = foto,
+                                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = { fotoSeleccionadaParaVer = null },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Contenedor visual de la imagen
+                        if (cargandoImagenBd) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = NavyBluePrimary, strokeWidth = 3.dp)
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "Descargando imagen real desde Azure SQL...",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = NavyBluePrimary,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (errorDescarga != null) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                                border = BorderStroke(1.dp, Color(0xFFFCA5A5))
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = null,
+                                            tint = Color(0xFFDC2626),
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "No se pudo cargar la imagen",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = Color(0xFFDC2626),
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = errorDescarga ?: "",
+                                            style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (realBitmap != null) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A))
+                            ) {
+                                Image(
+                                    bitmap = realBitmap.asImageBitmap(),
+                                    contentDescription = foto,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 220.dp, max = 360.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
+                        } else if (isInvoice) {
+                            // Factura Electrónica fidedigna
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA)),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = item.taller.uppercase(),
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = NavyBluePrimary
+                                                )
+                                            )
+                                            Text(
+                                                text = "RUC: 20491823901 • Taller Autorizado",
+                                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                                            )
+                                            Text(
+                                                text = "Av. Industrial 450 - Zona Automotriz",
+                                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color(0xFFE0E7FF))
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "FAC-#${item.id}092",
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF3730A3)
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 12.dp),
+                                        color = Color(0xFFE2E8F0)
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text("CLIENTE:", style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray))
+                                            Text("TRANSANDINA S.A.C.", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text("FECHA EMISIÓN:", style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray))
+                                            Text(item.fecha, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text("VEHÍCULO / PLACA:", style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray))
+                                            Text(item.placa, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = NavyBluePrimary))
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text("ESTADO / TIPO:", style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray))
+                                            Text(item.tipo.label, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFFF1F5F9))
+                                            .padding(12.dp)
+                                    ) {
+                                        Column {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(item.tipo.label, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                                                Text("₡${currencyFormatter.format(item.costo)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                                            }
+                                            Text(
+                                                text = "Incluye repuestos originales, mano de obra e impuestos de ley",
+                                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFFECFDF5))
+                                            .border(1.dp, Color(0xFFA7F3D0), RoundedCornerShape(8.dp))
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color(0xFF059669),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "COMPROBANTE VERIFICADO Y CONCILIADO",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF065F46)
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Registro fotográfico técnico
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(260.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                                border = BorderStroke(1.dp, Color(0xFF334155))
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center,
+                                        modifier = Modifier.padding(16.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(70.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF0F172A)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.DirectionsCar,
+                                                contentDescription = null,
+                                                tint = AccentBlue,
+                                                modifier = Modifier.size(38.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Text(
+                                            text = "EVIDENCIA TÉCNICA DE INTERVENCIÓN",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Text(
+                                            text = "${item.placa} • ${item.tipo.label}",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = Color(0xFF94A3B8),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        )
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color(0xFF334155))
+                                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "TALLER: ${item.taller}",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    color = Color(0xFF38BDF8),
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "${item.fecha} • REG-IMG-${item.id}",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = Color(0xFF64748B)
+                                        ),
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(10.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Metadatos de la intervención
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF8FAFC))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Vehículo / Placa:", style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray))
+                                Text(item.placa, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = NavyBluePrimary))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Tipo de Servicio:", style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray))
+                                Text(item.tipo.label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Taller Encargado:", style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray))
+                                Text(item.taller, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Costo Registrado:", style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray))
+                                Text("₡${currencyFormatter.format(item.costo)}", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Button(
+                            onClick = { fotoSeleccionadaParaVer = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyBluePrimary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Volver a Evidencias", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
         }
 
         // --- 6. DIÁLOGO MODAL DE CALENDARIO PARA RANGO DE FECHAS PERSONALIZADO ---
@@ -986,22 +1537,25 @@ private fun MaintenanceCardItem(
                     )
                 }
 
-                // Botón Evidencia (abre las fotos de factura/trabajo)
-                OutlinedButton(
-                    onClick = onVerEvidencia,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.height(30.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyBluePrimary),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NavyBluePrimary.copy(alpha = 0.5f)),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        text = "EVIDENCIA",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
+                // Botón Evidencia (se muestra ÚNICAMENTE si existen imágenes en la base de datos)
+                val tieneEvidenciasReales = item.evidenciasDetalle.any { it.tieneArchivo && it.idEvidencia > 0 }
+                if (tieneEvidenciasReales) {
+                    OutlinedButton(
+                        onClick = onVerEvidencia,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(30.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyBluePrimary),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NavyBluePrimary.copy(alpha = 0.5f)),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "VER EVIDENCIA",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
                         )
-                    )
+                    }
                 }
 
                 // Badge Tipo: PREVENTIVO o CORRECTIVO

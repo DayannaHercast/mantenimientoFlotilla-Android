@@ -72,22 +72,22 @@ enum class EstadoDocumento(
 
 // Datos detallados de la ficha técnica de un vehículo
 data class FichaVehicular(
-    val placa: String = "DDD-124",
-    val marca: String = "Hyundai",
-    val modelo: String = "Tucson",
-    val anio: Int = 2023,
+    val placa: String = "",
+    val marca: String = "",
+    val modelo: String = "",
+    val anio: Int = 0,
     val estadoSemaforo: EstadoSemaforo = EstadoSemaforo.AL_DIA,
-    val estadoOperativo: String = "Activo",
-    val conductorActual: String = "Juan Pérez López",
-    val capacidad: String = "5 personas",
-    val tipoVehiculo: String = "Liviano",
-    val marchamoVence: String = "31/12/2026",
+    val estadoOperativo: String = "",
+    val conductorActual: String = "Sin conductor asignado",
+    val capacidad: String = "",
+    val tipoVehiculo: String = "",
+    val marchamoVence: String = "",
     val marchamoEstado: EstadoDocumento = EstadoDocumento.AL_DIA,
-    val rtvVence: String = "15/10/2026",
-    val rtvEstado: EstadoDocumento = EstadoDocumento.PROXIMO,
-    val seguroEstado: String = "Póliza Activa (INS)",
+    val rtvVence: String = "",
+    val rtvEstado: EstadoDocumento = EstadoDocumento.AL_DIA,
+    val seguroEstado: String = "",
     val seguroEstadoDoc: EstadoDocumento = EstadoDocumento.AL_DIA,
-    val kilometrajeActual: String = "42,350 km"
+    val kilometrajeActual: String = "0 km"
 )
 
 @Composable
